@@ -4,6 +4,7 @@
 - [Using React.memo](#using-reactmemo)
 - [Zustand and Redux](#zustand-and-redux)
 - [Context API](#context)
+- [Jotai](#jotai)
 
 ## Default behavior (ordinary state and props)
 
@@ -424,4 +425,82 @@ const CountProvider = ({ children }) => {
     </CountContext.Provider>
   );
 };
+```
+
+## Jotai
+
+This is a recipe for a way to avoid unnecessary rerenders and to have a somewhat nice API on the side of the components which use the global state provided by jotai.
+This recipe gives you a syntax similar to the dispatch / action syntax seen when using reducers.
+
+**Setup**:
+
+- define your atom
+- define functions that return a function which receives the previous value and returns the updated value
+
+```js
+import { atom } from "jotai";
+
+export const increment =
+  (delta = 1) =>
+  (prev) =>
+    prev + delta;
+
+export const decrement =
+  (delta = 1) =>
+  (prev) =>
+    prev - delta < 0 ? 0 : prev - delta;
+
+export const countAtom = atom(0);
+```
+
+**Usage**:
+
+Whenever you have a component that only needs to read the state, but never updates the state, you can use the `useAtomValue` hook:
+
+```js
+import { countAtom } from "@/lib/atoms/count";
+import { useAtomValue } from "jotai";
+
+// The useAtomValue hook will trigger a rerender whenever the value (or the reference for objects) of your atom changes
+function CounterValue() {
+  const count = useAtomValue(countAtom);
+
+  return <p>{count}</p>;
+}
+```
+
+Whenever you have a component that only needs to update the state, but never needs to read the state, you can use the `useSetAtom` hook:
+
+```js
+import { countAtom, increment, decrement } from "@/lib/atoms/count";
+import { useSetAtom } from "jotai";
+
+// The useSetAtom hook will never trigger a rerender, since the returned function has a stable reference across renders
+function CounterButtons() {
+  const dispatch = useSetAtom(countAtom);
+
+  return (
+    <>
+      <button onClick={() => dispatch(increment(5))}>+ 5</button>
+      <button onClick={() => dispatch(decrement(5))}>- 5</button>
+    </>
+  );
+}
+```
+
+If you have a component that needs to read and update the state, you can use the `useAtom` hook:
+
+```js
+function Counter() {
+  // The useAtom hook will trigger a rerender whenever the value (or the reference for objects) of your atom changes
+  const [count, dispatch] = useAtom(countAtom);
+
+  return (
+    <>
+      <p>{count}</p>
+      <button onClick={() => dispatch(increment(5))}>+ 5</button>
+      <button onClick={() => dispatch(decrement(5))}>- 5</button>
+    </>
+  );
+}
 ```
